@@ -1,0 +1,6 @@
+rootProject.name = 'sentinel'
+
+include("${rootProject.name}-web")
+project(":${rootProject.name}-web").name = "${rootProject.name}-web"
+
+

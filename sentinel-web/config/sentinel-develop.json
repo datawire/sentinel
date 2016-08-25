@@ -1,0 +1,17 @@
+{
+  "port": 5000,
+
+  "git.workspace": "/tmp/sentinel-storage/git",
+
+  "kube": {
+    "masterUrl": "https://104.155.168.185",
+    "masterUsername": "admin"
+  },
+
+  "tenants": [
+    {
+      "id": "datawire",
+      "token": ""
+    }
+  ]
+}

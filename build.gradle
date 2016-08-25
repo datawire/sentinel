@@ -1,0 +1,75 @@
+buildscript {
+  ext.kotlinVersion = '1.0.3'
+  ext.shadowPluginVersion = '1.2.3'
+
+  repositories {
+    jcenter()
+  }
+
+  dependencies {
+    classpath "com.github.jengelman.gradle.plugins:shadow:$shadowPluginVersion"
+    classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
+  }
+}
+
+if (!JavaVersion.current().java8Compatible) {
+  throw new IllegalArgumentException('''A Haiku:
+                                      |  This needs Java 8,
+                                      |  You are using something else,
+                                      |  Upgrade. Try again.'''.stripMargin())
+}
+
+ext {
+  assertjVersion = '3.5.1'
+  junitVersion   = '4.12'
+  logbackVersion = '1.1.7'
+  slf4jVersion   = '1.7.21'
+  vertxVersion   = '3.3.2'
+}
+
+allprojects {
+  apply plugin: 'base'
+
+  group   = projectGroup
+  version = projectVersion  
+  
+  repositories {
+    jcenter()
+  }
+}
+
+subprojects {
+  apply plugin: 'kotlin'
+
+  sourceCompatibility = '1.8'
+  targetCompatibility = '1.8'
+  
+  repositories {
+    jcenter()
+    mavenLocal()
+  }
+
+  dependencies {
+    compile group: 'org.slf4j', name: 'slf4j-api', version: slf4jVersion
+
+    compile group: 'org.jetbrains.kotlin', name: 'kotlin-stdlib', version: kotlinVersion
+    compile group: 'org.jetbrains.kotlinx', name: 'kotlinx-support-jdk8', version: '0.3'
+
+    testCompile group: 'org.assertj', name: 'assertj-core', version: assertjVersion
+    testCompile group: 'junit',       name: 'junit',        version: junitVersion
+  }
+
+  tasks.withType(Tar) {
+    compression = Compression.GZIP
+  }
+
+  task allDeps(type: DependencyReportTask) {}
+}
+
+task version << {
+  println version
+}
+
+task wrapper(type: Wrapper) {
+  gradleVersion = '2.13'
+}

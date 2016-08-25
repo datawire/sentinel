@@ -1,0 +1,7 @@
+*.md
+bin
+kube
+
+# --- Python ---
+*.pyc
+venv

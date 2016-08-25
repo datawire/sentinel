@@ -1,0 +1,67 @@
+---
+  apiVersion: extensions/v1beta1
+  kind: Namespace
+  metadata:
+    name: services
+
+---
+  apiVersion: extensions/
+
+---
+  apiVersion: extensions/v1beta1
+  kind: Deployment
+  metadata:
+    name: sentinel
+    namespace: services
+  spec:
+    replicas: 3
+    template:
+      metadata:
+        labels:
+          app: sentinel
+      spec:
+        volumes:
+        - name: docker-sock
+          hostPath:
+            path: /var/run/docker.sock
+        - name: docker-directory
+          hostPath:
+            path: /var/lib/docker
+        containers:
+        - name: sentinel
+          image: us.gcr.io/datawireio/sentinel:0.0.1
+          priviledged: true
+          env:
+          - name: DATAWIRE_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: datawire
+                key: token
+          - name: DATAWIRE_ROUTABLE_HOST
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          volumeMounts:
+          - mountPath: /var/run/docker.sock
+            name: docker-sock
+            readOnly: false
+          - mountPath: /var/lib/docker
+            name: docker-directory
+            readOnly: false
+          ports:
+          - containerPort: 5000
+
+---
+  kind: Service
+  apiVersion: v1
+  metadata:
+    name: sentinel
+    namespace: services
+  spec:
+    selector:
+      app: sentinel
+    ports:
+      - protocol: TCP
+        port: 5000
+        targetPort: 5000
+        name: sentinel

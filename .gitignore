@@ -1,0 +1,33 @@
+# --- Java ---
+build
+target
+
+# --- Python ---
+*.pyc
+venv
+
+# --- Eclipse ---
+.project
+
+# --- IntelliJ ---
+.idea
+*.iml
+
+# --- K Desktop Environment ("KDE") ---
+.directory
+
+# --- Mac OS X ---
+.DS_Store
+
+# --- Gradle ---
+.gradle
+
+# --- Secrets ---
+*.key
+*.pem
+*.p12
+*.pkcs12
+*.jks
+*.jceks
+*.password
+*.passwd

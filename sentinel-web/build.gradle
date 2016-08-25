@@ -1,0 +1,81 @@
+apply plugin: 'application'
+apply plugin: 'com.github.johnrengelman.shadow'
+
+ext {
+  jgitVersion = '4.4.1.201607150455-r'
+
+  // Quark dependencies should be specified as below. The $group, $name, and $version are the values used to
+  // resolve from Maven. The $src is the URL or file path to a Quark source file.
+  quarkDependencies = [
+      [
+          group   : 'datawire_mdk',
+          name    : 'datawire_mdk',
+          version : '2.0.3',
+          src     : 'https://raw.githubusercontent.com/datawire/mdk/develop/quark/mdk-2.0.q'
+      ],
+  ]
+}
+
+//
+// TODO: Fix install process for MDK deps. Pulling in mysterious transitives on jackson that break everything
+//
+
+task quarkInstall() { }
+
+tasks.whenTaskAdded { t ->
+  println "Task = ${t.name}"
+  if(t.name == 'build') {
+    t.dependsOn quarkInstall
+  }
+}
+
+ext.quarkDependencies.each { depInfo ->
+  def depName = "${depInfo.name}-${depInfo.version}".toString()
+
+  task "quarkInstall_${depName}"(type: Exec) {
+    executable 'quark'
+    args       'install', '--java', depInfo.src
+  }
+
+  quarkInstall.dependsOn "quarkInstall_${depName}"
+  project.dependencies.add('compile', "${depInfo.group}:${depInfo.name}:${depInfo.version}")
+}
+
+dependencies {
+  compile group: "ch.qos.logback", name: "logback-classic", version: parent.ext.logbackVersion
+
+  compile group: 'com.spotify', name: 'docker-client', version: '3.5.12', classifier: 'shaded'
+  compile group: 'com.jcabi', name: 'jcabi-github', version: '0.28'
+
+  compile group: 'org.eclipse.jgit', name: 'org.eclipse.jgit', version: jgitVersion
+
+  compile group: 'io.fabric8', name: 'kubernetes-client', version: '1.4.6'
+
+  compile group: "io.vertx", name: "vertx-auth-jwt",  version: parent.ext.vertxVersion
+  compile group: "io.vertx", name: "vertx-core",      version: parent.ext.vertxVersion
+  compile group: "io.vertx", name: "vertx-web",       version: parent.ext.vertxVersion
+  compile group: "io.vertx", name: "vertx-hazelcast", version: parent.ext.vertxVersion
+  
+  testCompile group: "io.vertx", name: "vertx-unit", version: parent.ext.vertxVersion
+}
+
+mainClassName = 'io.vertx.core.Launcher'
+
+applicationDistribution.from(parent.projectDir) {
+  include 'LICENSE'
+  include 'NOTICE'
+  include 'README.md'
+  into ''
+}
+
+shadowJar {
+  classifier = 'fat'
+  
+  manifest {
+    attributes 'Main-Verticle': "${project.group}.SentinelService"
+  }
+  
+  mergeServiceFiles {
+    include 'META-INF/services/io.vertx.core.spi.VerticleFactory'
+  }
+}
