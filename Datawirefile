@@ -1,0 +1,21 @@
+{
+    "_datawirefile_version": 1,
+
+    "info": {
+        "name": "Datawire Sentinel",
+        "description": "Build and deploy docker container based on GitHub events",
+        "maintainers": [
+            {
+                "name": "Datawire Engineering",
+                "email": "dev@datawire.io",
+            }
+        ],
+        "website": "https://www.datawire.io/"
+    },
+
+    "service": {
+        "name": "sentinel",
+        "version": "0.1.0",
+        "public": true
+    }
+}
