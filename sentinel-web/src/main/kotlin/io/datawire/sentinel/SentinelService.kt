@@ -16,30 +16,54 @@
 
 package io.datawire.sentinel
 
+import io.datawire.mdk.MdkConfig
 import io.datawire.sentinel.deployment.Deployer
 import io.datawire.sentinel.docker.DockerImageBuilder
 import io.datawire.sentinel.github.GitHubIntegration
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.DeploymentOptions
 import io.vertx.core.logging.LoggerFactory
+import mdk.Functions
 
 
 class SentinelService : AbstractVerticle() {
 
   private val logger = LoggerFactory.getLogger(SentinelService::class.java)
 
+  private fun initializeMdk() {
+    logger.info("Initializing Datawire MDK")
+    val mdkConfig = MdkConfig(config())
+    val mdk = Functions.init()
+
+    Runtime.getRuntime().addShutdownHook(Thread {
+      logger.info("Gracefully stopping Datawire MDK")
+      mdk.stop()
+    })
+
+    logger.info("Starting Datawire MDK")
+    mdk.start()
+    mdk.register(mdkConfig.serviceName, mdkConfig.serviceVersion, "http://${mdkConfig.serviceAddress}")
+  }
+
   override fun start() {
-    vertx.deployVerticle(Deployer(), DeploymentOptions().setWorker(true).setConfig(config())) { deployerStatus ->
-      if (deployerStatus.succeeded()) {
-        vertx.deployVerticle(DockerImageBuilder(), DeploymentOptions().setWorker(true).setConfig(config())) { builderStatus ->
-          if (builderStatus.succeeded()) {
-            vertx.deployVerticle(GitHubIntegration(), DeploymentOptions().setConfig(config()))
+    logger.info("Deploy Sentinel...")
+    val workerConfig = DeploymentOptions()
+        .setConfig(config())
+        .setWorker(true)
+
+    vertx.deployVerticle(DockerImageBuilder(), workerConfig)
+    vertx.deployVerticle(Deployer(), workerConfig) { deployerDeployment ->
+      if (deployerDeployment.succeeded()) {
+        vertx.deployVerticle(GitHubIntegration(), DeploymentOptions().setConfig(config())) { githubDeployment ->
+          if (githubDeployment.succeeded()) {
+            logger.info("GitHub integration start succeeded")
+            initializeMdk()
           } else {
-            logger.error("Unable to deploy Builder verticle...")
+            logger.error("GitHub integration start failed", githubDeployment.cause())
           }
         }
       } else {
-        logger.error("Unable to deploy Deployer verticle...", deployerStatus.cause())
+        logger.error("Deployer component start failed")
       }
     }
   }
