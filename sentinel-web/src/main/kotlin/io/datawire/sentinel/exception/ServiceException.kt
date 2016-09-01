@@ -19,5 +19,6 @@ package io.datawire.sentinel.exception
 
 sealed class ServiceException(val httpStatusCode: Int = 500) : RuntimeException() {
 
-  class UnauthorizedException() : ServiceException(401)
+  class UnauthorizedException()  : ServiceException(401)
+  class UnprocessableException() : ServiceException(400)
 }

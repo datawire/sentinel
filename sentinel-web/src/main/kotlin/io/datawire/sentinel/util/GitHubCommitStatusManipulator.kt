@@ -29,5 +29,5 @@ fun main(args: Array<String>) {
   val newStatus = Statuses.StatusCreate(Status.State.SUCCESS)
       .withDescription("success")
 
-  repo.git().commits().statuses("ac82789f1ea2f3b289d53cdd175ad7c8c7b1312a").create(newStatus)
+  repo.git().commits().statuses("54fd6595adc87c75c078ab5b78336070d6b1d36b").create(newStatus)
 }

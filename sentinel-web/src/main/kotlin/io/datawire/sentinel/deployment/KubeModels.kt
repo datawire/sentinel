@@ -17,21 +17,21 @@ data class KubeModels(private val tenantId: String) {
   }
 
   fun createOpenMetadata(): ObjectMetaBuilder {
-    return ObjectMetaBuilder(VALIDATION_ENABLED).withNamespace("ns-$tenantId")
+    return ObjectMetaBuilder(VALIDATION_ENABLED).withNamespace(tenantId)
   }
 
   fun createNamespace(): Namespace {
     val namespace = NamespaceBuilder(VALIDATION_ENABLED)
 
     namespace.withNewMetadata()
-        .withName("ns-$tenantId")
+        .withName(tenantId)
         .endMetadata()
 
     return namespace.build()
   }
 
   fun createTokenSecret(token: String): Secret {
-    val metadata = createOpenMetadata().withName("sec-$tenantId").build()
+    val metadata = createOpenMetadata().withName(tenantId).build()
 
     val secret = SecretBuilder(VALIDATION_ENABLED)
         .withMetadata(metadata)

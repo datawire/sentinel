@@ -20,7 +20,8 @@ import com.spotify.docker.client.DefaultDockerClient
 import com.spotify.docker.client.DockerRequestException
 import com.spotify.docker.client.ProgressHandler
 import com.spotify.docker.client.messages.AuthConfig
-import io.datawire.sentinel.kube.KubeDeployConfig
+import io.datawire.sentinel.model.DockerBuildContext
+import io.datawire.sentinel.model.KubernetesDeployContext
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.json.JsonObject
 import io.vertx.core.logging.LoggerFactory
@@ -34,22 +35,23 @@ class DockerImageBuilder : AbstractVerticle() {
   override fun start() {
     val dockerAuthConfig = AuthConfig.builder()
         .username("_json_key")
-        .password(System.getProperty("googleServiceAccountCredential"))
+        .password(System.getenv("DATAWIRE_GOOG_TOKEN"))
         .email("dev@datawire.io")
         .serverAddress("https://us.gcr.io")
         .build()
 
+    //val docker = DefaultDockerClient.fromEnv().build()
     val docker = DefaultDockerClient.fromEnv().authConfig(dockerAuthConfig).build()
 
     vertx.eventBus().consumer<JsonObject>("docker.image-builder").handler { msg ->
-      val instructions = DockerImageBuildConfig.fromJson(msg.body())
+      val instructions = DockerBuildContext.fromJson(msg.body())
 
-      vertx.executeBlocking<Pair<DockerImageBuildConfig, String>>(
+      vertx.executeBlocking<DockerBuildContext>(
           { fut ->
             val imageId = AtomicReference<String>()
 
-            logger.info("Building Docker image (context: {})", instructions.context)
-            docker.build(instructions.context, ProgressHandler { msg ->
+            logger.info("Building Docker image (context: {})", instructions.buildContext)
+            docker.build(instructions.buildContext, ProgressHandler { msg ->
               logger.info(msg)
               msg.buildImageId()?.let { id -> imageId.set(id) }
             })
@@ -59,23 +61,21 @@ class DockerImageBuilder : AbstractVerticle() {
             logger.info("Pushing Docker image (image: {})", imageId.get())
             docker.push("us.gcr.io" + "/" + instructions.tag, { msg -> logger.info(msg) })
 
-            fut.complete(Pair(instructions, instructions.tag))
+            fut.complete(instructions)
           },
           false,
           { res ->
             if (res.succeeded()) {
-              val (dockerImageConfig, dockerTag) = res.result()
-              logger.info("Docker image build succeeded (image-id: {})", res.result())
+              val result = res.result()
+              //val (dockerImageConfig, dockerTag) = res.result()
+              //logger.info("Docker image build succeeded (image-id: {})", res.result())
 
-              val kubeConfig = KubeDeployConfig(
-                  "datawire",
-                  dockerTag,
-                  JsonObject(mapOf(
-                      "service.name" to dockerImageConfig.serviceName,
-                      "service.version" to dockerImageConfig.serviceVersion
-                  )))
+              val kubeDeployContext = KubernetesDeployContext(
+                  result.datawire,
+                  result.datawire.service
+              )
 
-              vertx.eventBus().send("deployer.kube", kubeConfig.toJson())
+              vertx.eventBus().send("deployer.kube", kubeDeployContext.toJson())
             } else {
               logger.error("Docker image build failed", res.cause())
               if (res.cause() is DockerRequestException) {

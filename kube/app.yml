@@ -29,18 +29,29 @@
             path: /var/lib/docker
         containers:
         - name: sentinel
-          image: us.gcr.io/datawireio/sentinel:0.0.1
+          image: us.gcr.io/datawireio/sentinel:0.1.15
           priviledged: true
           env:
+          - name: MDK_SERVICE_NAME
+            value: sentinel
+          - name: MDK_SERVICE_VERSION
+            value: "0.1.15"
           - name: DATAWIRE_TOKEN
             valueFrom:
               secretKeyRef:
                 name: datawire
                 key: token
+          - name: DATAWIRE_GOOG_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: datawire-goog
+                key: google
           - name: DATAWIRE_ROUTABLE_HOST
             valueFrom:
               fieldRef:
                 fieldPath: status.podIP
+          - name: DATAWIRE_ROUTABLE_PORT
+            value: "5000"
           volumeMounts:
           - mountPath: /var/run/docker.sock
             name: docker-sock

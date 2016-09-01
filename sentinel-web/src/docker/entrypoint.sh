@@ -6,10 +6,13 @@ APP_ENV="${ENV:?"Environment variable ENV is not set."}"
 APP_JAR="sentinel-web.jar"
 
 DEFAULT_JAVA_OPTS="\
+-Dmdk.service.name=${MDK_SERVICE_NAME} \
+-Dmdk.service.version=${MDK_SERVICE_VERSION} \
+-Dmdk.service.host=${DATAWIRE_ROUTABLE_HOST} \
+-Dmdk.service.port=${DATAWIRE_ROUTABLE_PORT} \
 -Dapp.env=${APP_ENV} \
 -Dlogback.configurationFile=config/logback.xml \
--Dvertx.logger-delegate-factory-class-name=io.vertx.core.logging.SLF4JLogDelegateFactory \
--DgoogleServiceAccountCredentials=${GOOGLE_CREDENTIALS}"
+-Dvertx.logger-delegate-factory-class-name=io.vertx.core.logging.SLF4JLogDelegateFactory"
 
 DEFAULT_VERTX_OPTS="-conf config/${APP_NAME}-${APP_ENV}.json"
 

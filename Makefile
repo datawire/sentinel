@@ -1,10 +1,11 @@
 # Makefile: hello-mobius
 
-VERSION=$(shell cat VERSION)
+SERVICE_NAME=$(shell cat Datawirefile | python -c 'import sys, json; print json.load(sys.stdin)["service"]["name"]')
+SERVICE_VERSION=$(shell cat Datawirefile | python -c 'import sys, json; print json.load(sys.stdin)["service"]["version"]')
 QUARK_REQUIREMENTS=$(shell sed -e '/^[[:space:]]*$$/d' -e '/^[[:space:]]*\#/d' requirements-quark.txt | tr '\n' ' ' )
 
-DOCKER_REGISTRY_HOST="us.gcr.io"
-DOCKER_REPO="datawireio/hello-mobius"
+DOCKER_REGISTRY_HOST=$(shell cat Datawirefile | python -c 'import sys, json; print json.load(sys.stdin)["docker"]["registryAddress"]')
+DOCKER_REPO=datawireio/sentinel
 
 .PHONY: all
 
@@ -17,10 +18,13 @@ build:
  
 docker:
 	# Produces a Docker image.
-	docker build -t $(DOCKER_REPO):$(VERSION) .
+	docker build \
+	    --build-arg SERVICE_VERSION=$(SERVICE_VERSION) \
+	    -t $(DOCKER_REPO):$(SERVICE_VERSION) \
+	    .
 
 docker-bash:
-	docker run -i -t --entrypoint /bin/bash $(DOCKER_REPO):$(VERSION)
+	docker run -i -t --entrypoint /bin/bash $(DOCKER_REPO):$(SERVICE_VERSION)
  
 clean:
 	# Clean previous build outputs (e.g. class files) and temporary files. Customize as needed.
@@ -42,24 +46,32 @@ quark-install-venv: venv
 	)
 
 publish: docker
-	docker tag $(DOCKER_REPO):$(VERSION) $(DOCKER_REGISTRY_HOST)/$(DOCKER_REPO):$(VERSION)
-	gcloud docker push $(DOCKER_REGISTRY_HOST)/$(DOCKER_REPO):$(VERSION)
+	docker tag $(DOCKER_REPO):$(SERVICE_VERSION) $(DOCKER_REGISTRY_HOST)/$(DOCKER_REPO):$(SERVICE_VERSION)
+	docker push $(DOCKER_REGISTRY_HOST)/$(DOCKER_REPO):$(SERVICE_VERSION)
 
 publish-no-build:
-	docker tag $(DOCKER_REPO):$(VERSION) $(DOCKER_REGISTRY_HOST)/$(DOCKER_REPO):$(VERSION)
-	gcloud docker push $(DOCKER_REGISTRY_HOST)/$(DOCKER_REPO):$(VERSION)
+	docker tag $(DOCKER_REPO):$(SERVICE_VERSION) $(DOCKER_REGISTRY_HOST)/$(DOCKER_REPO):$(SERVICE_VERSION)
+	docker push $(DOCKER_REGISTRY_HOST)/$(DOCKER_REPO):$(SERVICE_VERSION)
 
 run-dev: venv
 	# Run the service or application in development mode.
 	venv/bin/python service/service.py
 
-run-docker: docker
-	# Run the service or application in production mode.
-	docker run --rm --name datawire-hello-mobius -e DATAWIRE_ROUTABLE_HOST=127.0.0.1 -e DATAWIRE_TOKEN=$(DATAWIRE_TOKEN) -it -p 5000:5000 $(DOCKER_REPO):$(VERSION)
+run-docker: docker run-docker-no-rebuild
+	:
 
 run-docker-no-rebuild:
 	# Run the service or application in production mode.
-	docker run --rm --name datawire-hello-mobius -e DATAWIRE_ROUTABLE_HOST=127.0.0.1 -e DATAWIRE_TOKEN=$(DATAWIRE_TOKEN) -it -p 5000:5000 $(DOCKER_REPO):$(VERSION)
+	docker run -it --rm --name datawire-sentinel \
+	    -e ENV=develop \
+		-e DATAWIRE_ROUTABLE_HOST=127.0.0.1 \
+		-e DATAWIRE_ROUTABLE_PORT=5000 \
+		-e DATAWIRE_TOKEN=$(DATAWIRE_TOKEN) \
+		-e MDK_SERVICE_NAME=$(SERVICE_NAME) \
+		-e MDK_SERVICE_VERSION=$(SERVICE_VERSION) \
+		-v $(shell pwd)/sentinel-web/config:/opt/sentinel/config \
+		-p 5000:5000 \
+		$(DOCKER_REPO):$(SERVICE_VERSION)
 
 test: venv
 	# Run the full test suite.
@@ -68,17 +80,7 @@ unit-test: venv
 	# Run only the unit tests.
 
 version:
-	@echo $(VERSION)
+	@echo $(SERVICE_VERSION)
 
-# Python virtualenv automatic setup. Ensures that targets relying on the virtualenv always have an updated python to
-# use.
-#
-# This is intended for developer convenience. Do not attempt to make venv in a Docker container or use a virtualenv in
-# docker container because you will be going down into a world of darkness.
-
-venv: venv/bin/activate
-
-venv/bin/activate: requirements.txt
-	test -d venv || virtualenv venv
-	venv/bin/pip install -Ur requirements.txt
-	touch venv/bin/activate
+service-name:
+	@echo $(SERVICE_VERSION)

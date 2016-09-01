@@ -19,6 +19,8 @@ if (!JavaVersion.current().java8Compatible) {
                                       |  Upgrade. Try again.'''.stripMargin())
 }
 
+version = new groovy.json.JsonSlurper().parse(file("Datawirefile")).service.version
+
 ext {
   assertjVersion = '3.5.1'
   junitVersion   = '4.12'
@@ -31,8 +33,7 @@ allprojects {
   apply plugin: 'base'
 
   group   = projectGroup
-  version = projectVersion  
-  
+
   repositories {
     jcenter()
   }
@@ -51,6 +52,7 @@ subprojects {
 
   dependencies {
     compile group: 'org.slf4j', name: 'slf4j-api', version: slf4jVersion
+    compile group: 'org.slf4j', name: 'jul-to-slf4j', version: slf4jVersion
 
     compile group: 'org.jetbrains.kotlin', name: 'kotlin-stdlib', version: kotlinVersion
     compile group: 'org.jetbrains.kotlinx', name: 'kotlinx-support-jdk8', version: '0.3'

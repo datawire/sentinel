@@ -2,6 +2,9 @@
 build
 target
 
+# --- Vert.x ---
+.vertx
+
 # --- Python ---
 *.pyc
 venv
@@ -31,3 +34,6 @@ venv
 *.jceks
 *.password
 *.passwd
+
+# --- Temporary Bootstrapping ---
+bootstrap

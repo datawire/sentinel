@@ -1,6 +1,8 @@
 apply plugin: 'application'
 apply plugin: 'com.github.johnrengelman.shadow'
 
+version = parent.version
+
 ext {
   jgitVersion = '4.4.1.201607150455-r'
 
@@ -11,7 +13,7 @@ ext {
           group   : 'datawire_mdk',
           name    : 'datawire_mdk',
           version : '2.0.3',
-          src     : 'https://raw.githubusercontent.com/datawire/mdk/develop/quark/mdk-2.0.q'
+          src     : 'https://raw.githubusercontent.com/datawire/mdk/v2.0.3/quark/mdk-2.0.q'
       ],
   ]
 }
@@ -23,7 +25,6 @@ ext {
 task quarkInstall() { }
 
 tasks.whenTaskAdded { t ->
-  println "Task = ${t.name}"
   if(t.name == 'build') {
     t.dependsOn quarkInstall
   }

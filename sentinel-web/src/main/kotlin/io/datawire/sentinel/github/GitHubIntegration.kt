@@ -16,6 +16,7 @@
 
 package io.datawire.sentinel.github
 
+import io.datawire.quark.runtime.JSONObject
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Future
 import io.vertx.core.shareddata.AsyncMap
@@ -24,24 +25,8 @@ import io.vertx.ext.web.Router
 
 class GitHubIntegration : AbstractVerticle() {
 
-  private lateinit var webhookSecrets: AsyncMap<String, String>
-
   override fun start(startFuture: Future<Void>?) {
-    vertx.sharedData().getClusterWideMap<String, String>("github.webhook.secrets") { getMap ->
-      if (getMap.succeeded()) {
-        webhookSecrets = getMap.result()
-        webhookSecrets.putIfAbsent("datawire/hello-mobius", "foobar", {
-          res ->
-          if (res.failed()) {
-            println(res.cause())
-          }
-        })
-
-        super.start(startFuture)
-      } else {
-        throw IllegalStateException("Unable to access GitHub webhook secrets map")
-      }
-    }
+    super.start(startFuture)
   }
 
   override fun start() {
@@ -49,12 +34,16 @@ class GitHubIntegration : AbstractVerticle() {
 
     router.post("/integrations/github/webhook")
         .consumes("application/json")
-        .handler(GitHubWebHookHandler(vertx, config().getString("git.workspace"), webhookSecrets))
+        .handler(GitHubWebHookHandler(vertx, config().getJsonObject("git").getString("workspace")))
+
+    router.get("/integrations/github/health").handler { rc ->
+      rc.response().setStatusCode(200).end("OK")
+    }
 
     val server = vertx.createHttpServer()
     val requestHandler = server.requestHandler { router.accept(it) }
 
-    val host = config().getString("host", "127.0.0.1")
+    val host = config().getString("host", "0.0.0.0")
     val port = config().getInteger("port", 5000)
     requestHandler.listen(port, host)
   }

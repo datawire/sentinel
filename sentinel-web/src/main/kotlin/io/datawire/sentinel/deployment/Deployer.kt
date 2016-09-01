@@ -1,9 +1,7 @@
 package io.datawire.sentinel.deployment
 
-import io.datawire.sentinel.kube.KubeDeployConfig
-import io.datawire.sentinel.kube.KubeDeploymentHandler
+import io.datawire.sentinel.model.KubernetesDeployContext
 import io.fabric8.kubernetes.api.model.*
-import io.fabric8.kubernetes.api.model.extensions.Deployment
 import io.fabric8.kubernetes.api.model.extensions.DeploymentBuilder
 import io.fabric8.kubernetes.client.Config
 import io.fabric8.kubernetes.client.DefaultKubernetesClient
@@ -23,7 +21,7 @@ class Deployer : AbstractVerticle() {
   override fun start(startFuture: Future<Void>?) {
     logger.debug(System.getProperty("kubePassword"))
 
-
+    // TODO: We need an external credentials management story if we are going to talk to Tenant's kube clusters
     val kubeConfig = Config.builder()
         .withMasterUrl(config().getJsonObject("kube").getString("masterUrl"))
         .withUsername(config().getJsonObject("kube").getString("masterUsername"))
@@ -33,45 +31,45 @@ class Deployer : AbstractVerticle() {
 
     kube = DefaultKubernetesClient(kubeConfig)
 
-    vertx.executeBlocking<Int>(
-        { fut ->
-          val tenants = config().getJsonArray("tenants")
-          for (record in tenants) {
-            when (record) {
-              is JsonObject -> {
-                val tenantId = record.getString("id")
-                logger.info("Initializing tenant (tenant: {})", tenantId)
-                val km = KubeModels(tenantId)
-                val ns = km.createNamespace()
-
-                if (kube.namespaces().withName(ns.metadata.name).get() == null) {
-                  logger.debug("Creating namespace (ns: {})", ns.metadata.name)
-                  kube.namespaces().create(ns)
-                } else {
-                  logger.debug("Namespace already exists (ns: {})", ns.metadata.name)
-                }
-
-                val sec = km.createTokenSecret(record.getString("token"))
-                if (kube.secrets().inNamespace(ns.metadata.name).withName(sec.metadata.name).get() == null) {
-                  logger.debug("Creating secret (sec: {})", sec.metadata.name)
-                  kube.secrets().create(sec)
-                } else {
-                  logger.debug("Secret already exists (sec: {})", sec.metadata.name)
-                }
-              }
-            }
-          }
-
-          fut.complete(tenants.size())
-        },
-        false,
-        { res ->
-          if (res.succeeded()) {
-            logger.info("Succeeded creating tenants (count: {})", res.result())
-          } else {
-            logger.error("Failed creating tenants", res.cause())
-          }
-        })
+//    vertx.executeBlocking<Int>(
+//        { fut ->
+//          val tenants = config().getJsonArray("tenants")
+//          for (record in tenants) {
+//            when (record) {
+//              is JsonObject -> {
+//                val tenantId = record.getString("id")
+//                logger.info("Initializing tenant (tenant: {})", tenantId)
+//                val km = KubeModels(tenantId)
+//                val ns = km.createNamespace()
+//
+//                if (kube.namespaces().withName(ns.metadata.name).get() == null) {
+//                  logger.debug("Creating namespace (ns: {})", ns.metadata.name)
+//                  kube.namespaces().create(ns)
+//                } else {
+//                  logger.debug("Namespace already exists (ns: {})", ns.metadata.name)
+//                }
+//
+//                val sec = km.createTokenSecret(record.getString("token"))
+//                if (kube.secrets().inNamespace(ns.metadata.name).withName(sec.metadata.name).get() == null) {
+//                  logger.debug("Creating secret (sec: {})", sec.metadata.name)
+//                  kube.secrets().create(sec)
+//                } else {
+//                  logger.debug("Secret already exists (sec: {})", sec.metadata.name)
+//                }
+//              }
+//            }
+//          }
+//
+//          fut.complete(tenants.size())
+//        },
+//        false,
+//        { res ->
+//          if (res.succeeded()) {
+//            logger.info("Succeeded creating tenants (count: {})", res.result())
+//          } else {
+//            logger.error("Failed creating tenants", res.cause())
+//          }
+//        })
 
     super.start(startFuture)
   }
@@ -80,11 +78,11 @@ class Deployer : AbstractVerticle() {
     val kubeDeployer = vertx.eventBus().consumer<JsonObject>("deployer.kube")
 
     kubeDeployer.handler { msg ->
-      val deployConfig = KubeDeployConfig.fromJson(msg.body())
-      logger.info("Handling deployment for tenant (tn: {})", deployConfig.tenant)
+      val ctx = KubernetesDeployContext.fromJson(msg.body())
+      logger.info("Handling deployment for tenant (tn: {})", ctx.datawire.tenant.id)
       vertx.executeBlocking<Void>(
           { fut ->
-            runService(deployConfig.tenant, "ns-${deployConfig.tenant}", deployConfig)
+            runService(ctx.datawire.tenant.id, ctx.datawire.tenant.id, ctx)
             fut.complete()
           },
           false,
@@ -98,8 +96,14 @@ class Deployer : AbstractVerticle() {
     }
   }
 
-  private fun runService(tenant: String, namespace: String, config: KubeDeployConfig) {
-    val realName = "${config.mobiusConfig.getString("service.name")}-${config.mobiusConfig.getString("service.version")}"
+  private fun runService(tenant: String, namespace: String, config: KubernetesDeployContext) {
+    val realName = "${config.service.name}-${config.service.version.replace('.', '-')}"
+
+    logger.debug("Real name = {}", realName)
+    logger.debug("Tenant    = {}", tenant)
+    logger.debug("Config    = {}", config)
+    logger.debug("Srv name  = {}", config.service.name)
+    logger.debug("Srv vers  = {}", config.service.version)
 
     EnvVarSourceBuilder().withNewFieldRef("v1", "status.podIP").build()
 
@@ -108,30 +112,31 @@ class Deployer : AbstractVerticle() {
         .withName(realName)
         .endMetadata()
         .withNewSpec()
-        .withReplicas(2)
+        .withReplicas(1)
         .withNewTemplate()
         .withNewMetadata()
         .withLabels(mapOf(
-            "app" to config.mobiusConfig.getString("service.name")
+            "app" to config.service.name
         ))
         .endMetadata()
         .withNewSpec()
         .withContainers(listOf(
             ContainerBuilder()
-                .withName(config.mobiusConfig.getString("service.name"))
-                .withImage("us.gcr.io/datawireio/$tenant-${config.mobiusConfig.getString("service.name")}:${config.mobiusConfig.getString("service.version")}")
+                .withName(realName)
+                .withImage("us.gcr.io/datawireio/$tenant-${config.service.name}:${config.service.version}")
                 .withEnv(
                     listOf(
-                        EnvVar("MDK_SERVICE_NAME", config.mobiusConfig.getString("service.name"), null),
-                        EnvVar("MDK_SERVICE_VERSION", config.mobiusConfig.getString("service.version"), null),
+                        EnvVar("MDK_SERVICE_NAME", config.service.name, null),
+                        EnvVar("MDK_SERVICE_VERSION", config.service.version, null),
                         EnvVar("DATAWIRE_TOKEN",
                                null,
-                               EnvVarSourceBuilder().withSecretKeyRef(SecretKeySelector("token", "sec-$tenant")).build()),
+                               EnvVarSourceBuilder().withSecretKeyRef(SecretKeySelector("token", tenant)).build()),
 
                         EnvVar("DATAWIRE_ROUTABLE_HOST",
                                null,
                                EnvVarSourceBuilder().withNewFieldRef("v1", "status.podIP").build()
-                        )
+                        ),
+                        EnvVar("DATAWIRE_ROUTABLE_PORT", "5000", null)
                     )
                 ).withPorts(listOf(ContainerPortBuilder().withContainerPort(5000).build())).build()
         ))

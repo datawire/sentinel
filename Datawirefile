@@ -1,5 +1,5 @@
 {
-    "_datawirefile_version": 1,
+    "_datawirefileVersion": 1,
 
     "info": {
         "name": "Datawire Sentinel",
@@ -7,7 +7,7 @@
         "maintainers": [
             {
                 "name": "Datawire Engineering",
-                "email": "dev@datawire.io",
+                "email": "dev@datawire.io"
             }
         ],
         "website": "https://www.datawire.io/"
@@ -15,7 +15,11 @@
 
     "service": {
         "name": "sentinel",
-        "version": "0.1.0",
+        "version": "0.1.15",
         "public": true
+    },
+
+    "docker": {
+        "registryAddress": "us.gcr.io"
     }
 }

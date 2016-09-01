@@ -1,1 +1,0 @@
-https://raw.githubusercontent.com/datawire/mdk/develop/quark/mdk-2.0.q
