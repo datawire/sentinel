@@ -22,14 +22,14 @@ class Deployer : AbstractVerticle() {
     logger.debug(System.getProperty("kubePassword"))
 
     // TODO: We need an external credentials management story if we are going to talk to Tenant's kube clusters
-    val kubeConfig = Config.builder()
-        .withMasterUrl(config().getJsonObject("kube").getString("masterUrl"))
-        .withUsername(config().getJsonObject("kube").getString("masterUsername"))
-        .withPassword(System.getProperty("kubePassword", config().getJsonObject("kube").getString("masterPassword")))
-        .withTrustCerts(false)
-        .build()
+//    val kubeConfig = Config.builder()
+//        .withMasterUrl(config().getJsonObject("kube").getString("masterUrl"))
+//        .withUsername(config().getJsonObject("kube").getString("masterUsername"))
+//        //.withPassword(System.getProperty("kubePassword", config().getJsonObject("kube").getString("masterPassword")))
+//        .withTrustCerts(false)
+//        .build()
 
-    kube = DefaultKubernetesClient(kubeConfig)
+    kube = DefaultKubernetesClient()
 
 //    vertx.executeBlocking<Int>(
 //        { fut ->

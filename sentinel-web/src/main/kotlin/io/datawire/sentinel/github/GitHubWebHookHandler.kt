@@ -123,7 +123,7 @@ class GitHubWebHookHandler(
         val commit = if (eventType == "status") {
           json.getString("sha")
         } else {
-          json.getString("head")
+          json.getJsonObject("head_commit").getString("id")
         }
 
         val gitContext = GitContext(

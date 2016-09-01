@@ -1,20 +1,17 @@
 ---
-  apiVersion: extensions/v1beta1
+  apiVersion: v1
   kind: Namespace
   metadata:
-    name: services
-
----
-  apiVersion: extensions/
+    name: datawire
 
 ---
   apiVersion: extensions/v1beta1
   kind: Deployment
   metadata:
     name: sentinel
-    namespace: services
+    namespace: datawire
   spec:
-    replicas: 3
+    replicas: 1
     template:
       metadata:
         labels:
@@ -27,15 +24,21 @@
         - name: docker-directory
           hostPath:
             path: /var/lib/docker
+        - name: config-volume
+          configMap:
+            name: sentinel-config
         containers:
         - name: sentinel
-          image: us.gcr.io/datawireio/sentinel:0.1.15
-          priviledged: true
+          image: us.gcr.io/datawireio/sentinel:0.1.17
+          securityContext:
+            privileged: true
           env:
+          - name: ENV
+            value: develop
           - name: MDK_SERVICE_NAME
             value: sentinel
           - name: MDK_SERVICE_VERSION
-            value: "0.1.15"
+            value: "0.1.17"
           - name: DATAWIRE_TOKEN
             valueFrom:
               secretKeyRef:
@@ -59,6 +62,8 @@
           - mountPath: /var/lib/docker
             name: docker-directory
             readOnly: false
+          - name: config-volume
+            mountPath: /opt/sentinel/config
           ports:
           - containerPort: 5000
 
@@ -67,7 +72,7 @@
   apiVersion: v1
   metadata:
     name: sentinel
-    namespace: services
+    namespace: datawire
   spec:
     selector:
       app: sentinel
