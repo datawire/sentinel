@@ -170,6 +170,9 @@ class GitHubWebHookHandler(
                     .call()
               }
 
+              // brutal hack
+              fs.chmodBlocking(clonePath + "/entrypoint.sh", "rwxrwxrwx")
+
               res.complete()
               res
             }).compose(
