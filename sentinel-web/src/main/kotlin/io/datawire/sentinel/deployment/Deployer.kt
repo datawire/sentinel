@@ -96,7 +96,7 @@ class Deployer : AbstractVerticle() {
   }
 
   private fun createLoadBalancer(tenant: String, serviceName: String, ext: JsonObject) {
-    if (kube.services().inNamespace(tenant).withName(serviceName) == null) {
+    if (kube.services().inNamespace(tenant).withName(serviceName).get() == null) {
       logger.info("Creating service definition (ns: {}, service: {})", tenant, serviceName)
       val km = KubeModels(tenant)
       val lbService = km.createLoadBalancerService(serviceName, ext.getInteger("targetPort")) // TODO: refactor this BS away
