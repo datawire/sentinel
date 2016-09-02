@@ -29,7 +29,7 @@
             name: sentinel-config
         containers:
         - name: sentinel
-          image: us.gcr.io/datawireio/sentinel:0.1.17
+          image: us.gcr.io/datawireio/sentinel:0.1.18
           securityContext:
             privileged: true
           env:
@@ -38,7 +38,7 @@
           - name: MDK_SERVICE_NAME
             value: sentinel
           - name: MDK_SERVICE_VERSION
-            value: "0.1.17"
+            value: "0.1.18"
           - name: DATAWIRE_TOKEN
             valueFrom:
               secretKeyRef:
