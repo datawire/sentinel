@@ -3,7 +3,6 @@ package io.datawire.sentinel.deployment
 import io.datawire.sentinel.model.KubernetesDeployContext
 import io.fabric8.kubernetes.api.model.*
 import io.fabric8.kubernetes.api.model.extensions.DeploymentBuilder
-import io.fabric8.kubernetes.client.Config
 import io.fabric8.kubernetes.client.DefaultKubernetesClient
 import io.fabric8.kubernetes.client.KubernetesClient
 import io.vertx.core.AbstractVerticle
@@ -96,6 +95,17 @@ class Deployer : AbstractVerticle() {
     }
   }
 
+  private fun createLoadBalancer(tenant: String, serviceName: String, ext: JsonObject) {
+    if (kube.services().inNamespace(tenant).withName(serviceName) == null) {
+      logger.info("Creating service definition (ns: {}, service: {})", tenant, serviceName)
+      val km = KubeModels(tenant)
+      val lbService = km.createLoadBalancerService(serviceName, ext.getInteger("targetPort")) // TODO: refactor this BS away
+      kube.services().create(lbService)
+    } else {
+      logger.warn("Service definition already exists (ns: {}, service: {})", tenant, serviceName)
+    }
+  }
+
   private fun runService(tenant: String, namespace: String, config: KubernetesDeployContext) {
     val realName = "${config.service.name}-${config.service.version.replace('.', '-')}"
 
@@ -105,7 +115,47 @@ class Deployer : AbstractVerticle() {
     logger.debug("Srv name  = {}", config.service.name)
     logger.debug("Srv vers  = {}", config.service.version)
 
-    EnvVarSourceBuilder().withNewFieldRef("v1", "status.podIP").build()
+    var healthCheck: Probe? = null
+    config.service.ext.getJsonObject("kubernetes")?.let { ke ->
+      createLoadBalancer(tenant, config.service.name, ke)
+
+      ke.getJsonObject("healthCheck")?.let { hc ->
+        val check = HTTPGetActionBuilder()
+            .withPath(hc.getString("path"))
+            .withPort(IntOrString(hc.getInteger("port")))
+            .build()
+
+        healthCheck = ProbeBuilder().withHttpGet(check).withTimeoutSeconds(5).withInitialDelaySeconds(60).build()
+      }
+    }
+
+    // we need a better mechanism for people to customize ports
+    val port = config.service.ext.getJsonObject("kubernetes", JsonObject()).getInteger("targetPort") ?: 5000
+
+    val containerBuilder = ContainerBuilder()
+        .withName(realName)
+        .withImage("us.gcr.io/datawireio/$tenant-${config.service.name}:${config.service.version}")
+        .withEnv(
+            listOf(
+                EnvVar("MDK_SERVICE_NAME", config.service.name, null),
+                EnvVar("MDK_SERVICE_VERSION", config.service.version, null),
+                EnvVar("DATAWIRE_TOKEN",
+                       null,
+                       EnvVarSourceBuilder().withSecretKeyRef(SecretKeySelector("token", tenant)).build()),
+
+                EnvVar("DATAWIRE_ROUTABLE_HOST",
+                       null,
+                       EnvVarSourceBuilder().withNewFieldRef("v1", "status.podIP").build()
+                ),
+                EnvVar("DATAWIRE_ROUTABLE_PORT", port.toString(), null)
+            )
+        ).withPorts(listOf(ContainerPortBuilder().withContainerPort(5000).build()))
+
+    healthCheck?.let {
+      containerBuilder.withLivenessProbe(it)
+    }
+
+    val container = containerBuilder.build()
 
     val deployment = DeploymentBuilder().withNewMetadata()
         .withNamespace(namespace)
@@ -120,26 +170,7 @@ class Deployer : AbstractVerticle() {
         ))
         .endMetadata()
         .withNewSpec()
-        .withContainers(listOf(
-            ContainerBuilder()
-                .withName(realName)
-                .withImage("us.gcr.io/datawireio/$tenant-${config.service.name}:${config.service.version}")
-                .withEnv(
-                    listOf(
-                        EnvVar("MDK_SERVICE_NAME", config.service.name, null),
-                        EnvVar("MDK_SERVICE_VERSION", config.service.version, null),
-                        EnvVar("DATAWIRE_TOKEN",
-                               null,
-                               EnvVarSourceBuilder().withSecretKeyRef(SecretKeySelector("token", tenant)).build()),
-
-                        EnvVar("DATAWIRE_ROUTABLE_HOST",
-                               null,
-                               EnvVarSourceBuilder().withNewFieldRef("v1", "status.podIP").build()
-                        ),
-                        EnvVar("DATAWIRE_ROUTABLE_PORT", "5000", null)
-                    )
-                ).withPorts(listOf(ContainerPortBuilder().withContainerPort(5000).build())).build()
-        ))
+        .withContainers(listOf(container))
         .endSpec()
         .endTemplate()
         .endSpec()

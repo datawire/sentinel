@@ -39,4 +39,31 @@ data class KubeModels(private val tenantId: String) {
 
     return secret.build()
   }
+
+  fun createLoadBalancerService(serviceName: String, targetPort: Int): Service {
+    val metadata = createOpenMetadata()
+        .withName(serviceName)
+        .build()
+
+    val srv = ServiceBuilder(VALIDATION_ENABLED)
+        .withMetadata(metadata)
+        .withSpec(
+            ServiceSpecBuilder()
+                .withType("LoadBalancer")
+                .withSelector(mapOf(
+                    "app" to serviceName
+                ))
+                .withPorts(
+                    ServicePortBuilder()
+                        .withName("http")
+                        .withNewTargetPort(targetPort)
+                        .withProtocol("TCP")
+                        .withPort(80)
+                        .build()
+                )
+                .build()
+        )
+
+    return srv.build()
+  }
 }
