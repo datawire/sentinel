@@ -5,45 +5,13 @@ version = parent.version
 
 ext {
   jgitVersion = '4.4.1.201607150455-r'
-
-  // Quark dependencies should be specified as below. The $group, $name, and $version are the values used to
-  // resolve from Maven. The $src is the URL or file path to a Quark source file.
-  quarkDependencies = [
-      [
-          group   : 'datawire_mdk',
-          name    : 'datawire_mdk',
-          version : '2.0.3',
-          src     : 'https://raw.githubusercontent.com/datawire/mdk/v2.0.3/quark/mdk-2.0.q'
-      ],
-  ]
-}
-
-//
-// TODO: Fix install process for MDK deps. Pulling in mysterious transitives on jackson that break everything
-//
-
-task quarkInstall() { }
-
-tasks.whenTaskAdded { t ->
-  if(t.name == 'build') {
-    t.dependsOn quarkInstall
-  }
-}
-
-ext.quarkDependencies.each { depInfo ->
-  def depName = "${depInfo.name}-${depInfo.version}".toString()
-
-  task "quarkInstall_${depName}"(type: Exec) {
-    executable 'quark'
-    args       'install', '--java', depInfo.src
-  }
-
-  quarkInstall.dependsOn "quarkInstall_${depName}"
-  project.dependencies.add('compile', "${depInfo.group}:${depInfo.name}:${depInfo.version}")
+  mdkVersion  = '2.0.4'
 }
 
 dependencies {
   compile group: "ch.qos.logback", name: "logback-classic", version: parent.ext.logbackVersion
+
+  compile group: 'io.datawire.mdk', name: 'datawire_mdk', version: mdkVersion
 
   compile group: 'com.spotify', name: 'docker-client', version: '3.5.12', classifier: 'shaded'
   compile group: 'com.jcabi', name: 'jcabi-github', version: '0.28'
