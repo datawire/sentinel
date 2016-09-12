@@ -1,16 +1,20 @@
+import groovy.json.JsonSlurper
+
 buildscript {
-  ext.kotlinVersion = '1.0.3'
   ext.shadowPluginVersion = '1.2.3'
+  ext.kotlinVersion = '1.0.3'
 
   repositories {
     jcenter()
   }
 
   dependencies {
-    classpath "com.github.jengelman.gradle.plugins:shadow:$shadowPluginVersion"
+    classpath "com.github.jengelman.gradle.plugins:shadow:${shadowPluginVersion}"
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
   }
 }
+
+apply plugin: 'com.github.johnrengelman.shadow'
 
 if (!JavaVersion.current().java8Compatible) {
   throw new IllegalArgumentException('''A Haiku:
@@ -19,59 +23,67 @@ if (!JavaVersion.current().java8Compatible) {
                                       |  Upgrade. Try again.'''.stripMargin())
 }
 
-version = new groovy.json.JsonSlurper().parse(file("Datawirefile")).service.version
+// load the Datawirefile information into Gradle
+def datawireInfo = new JsonSlurper().parse(file("Datawirefile"))
+
+group   = 'io.datawire.sentinel'
+version = datawireInfo.service.version
 
 ext {
   assertjVersion = '3.5.1'
-  junitVersion   = '4.12'
+  datawireMdkVersion = '2.0.11'
+  junitVersion = '4.12'
   logbackVersion = '1.1.7'
-  slf4jVersion   = '1.7.21'
-  vertxVersion   = '3.3.2'
+  slf4jVersion = '1.7.21'
+  vertxVersion = '3.3.2'
 }
 
-allprojects {
-  apply plugin: 'base'
+apply plugin: 'kotlin'
 
-  group   = projectGroup
-
-  repositories {
-    jcenter()
-  }
+repositories {
+  jcenter()
+  mavenLocal()
 }
 
-subprojects {
-  apply plugin: 'kotlin'
+dependencies {
+  compile group: "ch.qos.logback", name: "logback-classic", version: logbackVersion
 
-  sourceCompatibility = '1.8'
-  targetCompatibility = '1.8'
-  
-  repositories {
-    jcenter()
-    mavenLocal()
-  }
+  compile group: "io.datawire.mdk", name: "datawire_mdk", version: datawireMdkVersion
 
-  dependencies {
-    compile group: 'org.slf4j', name: 'slf4j-api', version: slf4jVersion
-    compile group: 'org.slf4j', name: 'jul-to-slf4j', version: slf4jVersion
+  compile group: "io.vertx",       name: "vertx-core",      version: vertxVersion
+  compile group: "io.vertx",       name: "vertx-web",       version: vertxVersion
 
-    compile group: 'org.jetbrains.kotlin', name: 'kotlin-stdlib', version: kotlinVersion
-    compile group: 'org.jetbrains.kotlinx', name: 'kotlinx-support-jdk8', version: '0.3'
+  compile group: "org.jetbrains.kotlin",  name: "kotlin-stdlib", version: kotlinVersion
+  compile group: "org.jetbrains.kotlin",  name: "kotlin-reflect", version: kotlinVersion
+  compile group: 'org.jetbrains.kotlinx', name: 'kotlinx-support-jdk8', version: '0.3'
 
-    testCompile group: 'org.assertj', name: 'assertj-core', version: assertjVersion
-    testCompile group: 'junit',       name: 'junit',        version: junitVersion
-  }
+  compile group: 'org.slf4j', name: 'jul-to-slf4j', version: slf4jVersion
 
-  tasks.withType(Tar) {
-    compression = Compression.GZIP
-  }
-
-  task allDeps(type: DependencyReportTask) {}
+  testCompile group: "io.vertx",    name: "vertx-unit",   version: vertxVersion
+  testCompile group: 'org.assertj', name: 'assertj-core', version: assertjVersion
+  testCompile group: 'junit',       name: 'junit',        version: junitVersion
 }
 
-task version << {
-  println version
+
+// Ensures we always produce GZIP compressed tarballs.
+tasks.withType(Tar) {
+  compression = Compression.GZIP
 }
 
+// Make acquiring the Gradle wrapper painless.
 task wrapper(type: Wrapper) {
-  gradleVersion = '2.13'
+  gradleVersion = '3.0'
+}
+
+shadowJar {
+  classifier = 'fat'
+
+  manifest {
+    attributes 'Main-Class'    : 'io.vertx.core.Launcher'
+    attributes 'Main-Verticle' : "${project.group}.SentinelServiceVerticle"
+  }
+
+  mergeServiceFiles {
+    include 'META-INF/services/io.vertx.core.spi.VerticleFactory'
+  }
 }

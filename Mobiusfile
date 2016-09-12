@@ -1,8 +1,0 @@
-{
-    "_version": 1,
-
-    "service": {
-        "name": "hello-mobius",
-        "version": "0.1.0"
-    }
-}
