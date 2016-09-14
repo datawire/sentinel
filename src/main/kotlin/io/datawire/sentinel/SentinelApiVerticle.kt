@@ -18,6 +18,8 @@ package io.datawire.sentinel
 
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.AbstractVerticle
+import io.vertx.core.json.JsonArray
+import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Router
 
 
@@ -27,6 +29,7 @@ class SentinelApiVerticle : AbstractVerticle() {
     val api = Router.router(vertx)
 
     val dockerCreds = vertx.sharedData().getLocalMap<String, String>("docker-credentials")
+    val miscConfig  = vertx.sharedData().getLocalMap<String, String>("misc-config")
 
     val putDockerCredential = api
         .put("/dev/credentials/docker/:organizationId")
@@ -42,6 +45,25 @@ class SentinelApiVerticle : AbstractVerticle() {
 
       dockerCreds.put(orgId, secret)
       rc.response().setStatusCode(HttpResponseStatus.OK.code()).end("OK")
+    }
+
+    val putConfigEntry = api.put("/dev/config/:config-key").produces("text/plain")
+    putConfigEntry.handler { rc ->
+      val configKey = rc.request().getParam("config-key")
+      val configValue = rc.request().getParam("config-value")
+
+      miscConfig.put(configKey, configValue)
+      rc.response().setStatusCode(HttpResponseStatus.OK.code()).end("OK")
+    }
+
+    val getConfigEntries = api.get("/dev/config").produces("application/json")
+    getConfigEntries.handler { rc ->
+      val json = JsonObject()
+      for (k in miscConfig.keySet()) {
+        json.put(k, miscConfig.get(k))
+      }
+
+      rc.response().setStatusCode(HttpResponseStatus.OK.code()).end(json.encodePrettily())
     }
 
     val server = vertx.createHttpServer()
