@@ -48,6 +48,9 @@ docker-run: docker-build
 		$(DOCKER_REPO):$(SERVICE_VERSION) \
 	)
 
+docker-push: docker-build
+    docker push $(DOCKER_REPO):$(SERVICE_VERSION)
+
 test:
 	./gradlew test
 

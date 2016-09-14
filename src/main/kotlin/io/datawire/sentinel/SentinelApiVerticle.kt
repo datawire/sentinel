@@ -14,34 +14,38 @@
  * limitations under the License.
  */
 
-package io.datawire.sentinel.github
+package io.datawire.sentinel
 
-import io.datawire.quark.runtime.JSONObject
+import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.AbstractVerticle
-import io.vertx.core.Future
-import io.vertx.core.shareddata.AsyncMap
 import io.vertx.ext.web.Router
 
 
-class GitHubIntegration : AbstractVerticle() {
-
-  override fun start(startFuture: Future<Void>?) {
-    super.start(startFuture)
-  }
+class SentinelApiVerticle : AbstractVerticle() {
 
   override fun start() {
-    val router = Router.router(vertx)
+    val api = Router.router(vertx)
 
-    router.post("/integrations/github/webhook")
-        .consumes("application/json")
-        .handler(GitHubWebHookHandler(vertx, config().getJsonObject("git").getString("workspace")))
+    val dockerCreds = vertx.sharedData().getLocalMap<String, String>("docker-credentials")
 
-    router.get("/integrations/github/health").handler { rc ->
-      rc.response().setStatusCode(200).end("OK")
+    val putDockerCredential = api
+        .put("/dev/credentials/docker/:organizationId")
+        .produces("text/plain")
+
+    putDockerCredential.handler { rc ->
+      val orgId  = rc.request().getParam("organizationId")
+      val secret = rc.request().getParam("secret")
+
+      if (orgId == null || secret == null) {
+        rc.fail(HttpResponseStatus.INTERNAL_SERVER_ERROR.code())
+      }
+
+      dockerCreds.put(orgId, secret)
+      rc.response().setStatusCode(HttpResponseStatus.OK.code()).end("OK")
     }
 
     val server = vertx.createHttpServer()
-    val requestHandler = server.requestHandler { router.accept(it) }
+    val requestHandler = server.requestHandler { api.accept(it) }
 
     val host = config().getString("host", "0.0.0.0")
     val port = config().getInteger("port", 5000)

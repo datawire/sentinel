@@ -3,6 +3,10 @@
 
 # --- Miscellaenous Project Stuff ---
 Makefile
+bootstrap
+bin
+kube
+build
 
 # --- Java / JVM ---
 *.jar
@@ -20,6 +24,7 @@ gradlew.bat
 
 # --- IntelliJ IDEA ---
 .idea
+*.iml
 
 # --- Vert.x ---
 .vertx

@@ -32,7 +32,10 @@ version = datawireInfo.service.version
 ext {
   assertjVersion = '3.5.1'
   datawireMdkVersion = '2.0.11'
+  dockerClientVersion = '3.5.12'
+  jgitVersion = '4.4.1.201607150455-r'
   junitVersion = '4.12'
+  kubernetesClientVersion = '1.4.6'
   logbackVersion = '1.1.7'
   slf4jVersion = '1.7.21'
   vertxVersion = '3.3.2'
@@ -48,20 +51,26 @@ repositories {
 dependencies {
   compile group: "ch.qos.logback", name: "logback-classic", version: logbackVersion
 
+  compile group: 'com.spotify', name: 'docker-client', version: dockerClientVersion, classifier: 'shaded'
+
   compile group: "io.datawire.mdk", name: "datawire_mdk", version: datawireMdkVersion
 
-  compile group: "io.vertx",       name: "vertx-core",      version: vertxVersion
-  compile group: "io.vertx",       name: "vertx-web",       version: vertxVersion
+  compile group: 'io.fabric8', name: 'kubernetes-client', version: kubernetesClientVersion
 
-  compile group: "org.jetbrains.kotlin",  name: "kotlin-stdlib", version: kotlinVersion
-  compile group: "org.jetbrains.kotlin",  name: "kotlin-reflect", version: kotlinVersion
+  compile group: "io.vertx", name: "vertx-core", version: vertxVersion
+  compile group: "io.vertx", name: "vertx-web", version: vertxVersion
+
+  compile group: "org.jetbrains.kotlin", name: "kotlin-stdlib", version: kotlinVersion
+  compile group: "org.jetbrains.kotlin", name: "kotlin-reflect", version: kotlinVersion
   compile group: 'org.jetbrains.kotlinx', name: 'kotlinx-support-jdk8', version: '0.3'
+
+  compile group: 'org.eclipse.jgit', name: 'org.eclipse.jgit', version: jgitVersion
 
   compile group: 'org.slf4j', name: 'jul-to-slf4j', version: slf4jVersion
 
-  testCompile group: "io.vertx",    name: "vertx-unit",   version: vertxVersion
+  testCompile group: "io.vertx", name: "vertx-unit",   version: vertxVersion
   testCompile group: 'org.assertj', name: 'assertj-core', version: assertjVersion
-  testCompile group: 'junit',       name: 'junit',        version: junitVersion
+  testCompile group: 'junit', name: 'junit',        version: junitVersion
 }
 
 

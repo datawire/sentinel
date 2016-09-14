@@ -15,11 +15,8 @@
 
     "service": {
         "name": "sentinel",
-        "version": "0.1.21",
-        "public": true
-    },
-
-    "docker": {
-        "registryAddress": "us.gcr.io"
+        "version": "0.2.0",
+        "public": true,
+        "replicas": 1
     }
 }

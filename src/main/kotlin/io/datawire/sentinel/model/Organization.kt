@@ -14,11 +14,24 @@
  * limitations under the License.
  */
 
-package io.datawire.sentinel.exception
+package io.datawire.sentinel.model
+
+import io.datawire.json.*
+import io.vertx.core.json.JsonObject
 
 
-sealed class ServiceException(val httpStatusCode: Int = 500) : RuntimeException() {
+data class Organization(val id: String, val name: String?) {
 
-  class UnauthorizedException()  : ServiceException(401)
-  class UnprocessableException() : ServiceException(400)
+  constructor(json: JsonObject) : this(json.requireString("id"),
+                                       json.requireString("name"))
+
+  companion object {
+    private const val JSON_ID_FIELD   = "id"
+    private const val JSON_NAME_FIELD = "name"
+  }
+
+  fun toJson() = JsonObject(mapOf(
+      JSON_ID_FIELD to id,
+      JSON_NAME_FIELD to name
+  ))
 }
