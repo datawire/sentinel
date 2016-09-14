@@ -2,11 +2,16 @@
 .dockerignore
 
 # --- Miscellaenous Project Stuff ---
+*.md
+LICENSE
+NOTICE
 Makefile
 bootstrap
 bin
 kube
 build
+sentinel-web
+src/kube-bootstrap
 
 # --- Java / JVM ---
 *.jar

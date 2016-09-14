@@ -64,7 +64,7 @@ class SentinelServiceVerticle : AbstractVerticle() {
       vertx.deployVerticle(KubeClusterResolver(), workerConfig)
       vertx.deployVerticle(KubeOrganizationInitializer(), workerConfig)
 
-      startFuture.complete()
+      super.start(startFuture)
     } catch (any: Throwable) {
       logger.error("Datawire MDK start failed", any)
       startFuture.fail(any)
@@ -86,6 +86,14 @@ class SentinelServiceVerticle : AbstractVerticle() {
   }
 
   private fun registerWithDiscovery() {
-    mdk.register("sentinel", "0.1.0", "http://127.0.0.1:5000")
+    try {
+      mdk.register(
+          System.getProperty("mdk.service.name"),
+          System.getProperty("mdk.service.version"),
+          "http://${System.getProperty("mdk.service.host", "127.0.0.1")}:${System.getProperty("mdk.service.port", "5000")}")
+      logger.info("Register service with Datawire Discovery succeeded")
+    } catch (any: Throwable) {
+      logger.error("Register service with Datawire Discovery failed")
+    }
   }
 }

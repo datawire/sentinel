@@ -49,7 +49,7 @@ docker-run: docker-build
 	)
 
 docker-push: docker-build
-    docker push $(DOCKER_REPO):$(SERVICE_VERSION)
+		docker push $(DOCKER_REPO):$(SERVICE_VERSION)
 
 test:
 	./gradlew test

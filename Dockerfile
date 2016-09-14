@@ -17,7 +17,7 @@ RUN apk --no-cache add --virtual .build-deps \
     && apk del .build-deps \
     && mv build/libs/sentinel*.jar ./sentinel.jar \
     && chmod +x entrypoint.sh \
-    && rm -rf src build gradle .vertx .gradle .git .gitignore .dockerignore Dockerfile
+    && rm -rf src build gradle .vertx .gradle .git .gitignore .dockerignore Dockerfile /root/.gradle
 
 EXPOSE 5000
 ENTRYPOINT ["./entrypoint.sh"]

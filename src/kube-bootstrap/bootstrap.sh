@@ -26,15 +26,12 @@ if [[ "$FORCE" = "yes" ]]; then
     sleep 10s
 fi
 
-printf "Create Datawire Namespace\n"
 kubectl create namespace "$NAMESPACE"
 
-printf "Create Datawire Token Secret\n"
 kubectl create secret generic datawire \
     --from-literal="token=${DATAWIRE_TOKEN}" \
     --namespace "$NAMESPACE"
 
-printf "Deploy Datawire Gateway\n"
 kubectl apply -f sentinel.yml
 
 printf "Done!"
