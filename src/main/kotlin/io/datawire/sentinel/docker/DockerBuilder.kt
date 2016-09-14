@@ -44,9 +44,8 @@ class DockerBuilder : AbstractVerticle() {
       val ctx = DatawireContext.fromJson(msg.body())
 
       val dockerTag = "${dockerConfig.defaultRegistryAddress}/${ctx.service.id.dockerTag}"
-      val deployRequest = DeploymentRequest(ctx.org, ctx.service.id, 1, dockerTag, UpdateStrategy.APPEND, false)
 
-      if (ctx.service.image == null) {
+      val deployRequest = if (ctx.service.image == null) {
         val docker = DefaultDockerClient.fromEnv().build()
         val imageId = AtomicReference<String>()
 
@@ -60,8 +59,10 @@ class DockerBuilder : AbstractVerticle() {
         logger.info("Pushing image (image: {}, tag: {})", imageId.get(), dockerTag)
         docker.push(dockerTag, { msg -> logger.info(msg) })
 
+        DeploymentRequest(ctx.org, ctx.service.id, 1, dockerTag, UpdateStrategy.APPEND, false)
       } else {
         logger.info("Service specification indicates using a pre-built image; Skipping build process (image: {})", ctx.service.image)
+        DeploymentRequest(ctx.org, ctx.service.id, 1, ctx.service.image, UpdateStrategy.APPEND, false)
       }
 
       logger.info("Sending instructions to Kubernetes deployer")
